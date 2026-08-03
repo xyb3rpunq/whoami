@@ -3,6 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<!-- GitHub Pages tidak bisa menyetel header HTTP, jadi kebijakannya ditaruh di sini.
+     Hash di bawah milik satu-satunya skrip inline (penanda kelas .js). Kalau baris
+     itu diubah tanpa memperbarui hash, skripnya diblokir dan halaman tetap tampil
+     lengkap — cuma animasi reveal-nya yang mati. frame-src disiapkan untuk embed
+     podcast Spotify/YouTube. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-/x7W7R75k8Roq0WaVRQX9blP4OufE5xbAdzklGxsgpw=' 'sha256-QE4SmzuXf9AZVCyhLqA9w/a1W4Qg5FzyfIwmTU7rpdc='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; media-src 'self'; frame-src https://open.spotify.com https://www.youtube-nocookie.com; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
 <title>Daniel Hutajulu — @xyb3rpunk</title>
 <meta name="description" content="Daniel Hutajulu (@xyb3rpunk) — Infrastructure Engineer, AI &amp; Web3 builder, XAU/gold trader, digital creator. Dari nol, jatuh berkali-kali, tetap balik ke ring. Zero bottleneck.">
 <meta name="author" content="Daniel Hutajulu">
@@ -12,22 +19,33 @@
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="apple-touch-icon" href="assets/favicon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="whoami">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <meta property="og:type" content="profile">
 <meta property="og:site_name" content="Daniel Hutajulu">
 <meta property="og:title" content="Daniel Hutajulu — @xyb3rpunk">
 <meta property="og:description" content="Infrastructure Engineer · AI &amp; Web3 · XAU Trader · Digital Creator. Dari nol, jatuh berkali-kali, tetap balik ke ring.">
 <meta property="og:url" content="https://xyb3rpunq.github.io/whoami/">
-<meta property="og:image" content="https://xyb3rpunq.github.io/whoami/assets/favicon-180.png">
+<meta property="og:locale" content="id_ID">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://xyb3rpunq.github.io/whoami/assets/og-cover.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Daniel Hutajulu — @xyb3rpunk. Dari nol. Jatuh berkali-kali. Tetap balik ke ring.">
 <meta property="profile:first_name" content="Daniel">
 <meta property="profile:last_name" content="Hutajulu">
 <meta property="profile:username" content="xyb3rpunk">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@xyb3rpunk">
 <meta name="twitter:creator" content="@xyb3rpunk">
 <meta name="twitter:title" content="Daniel Hutajulu — @xyb3rpunk">
 <meta name="twitter:description" content="Infrastructure Engineer · AI &amp; Web3 · XAU Trader · Digital Creator.">
-<meta name="twitter:image" content="https://xyb3rpunq.github.io/whoami/assets/favicon-180.png">
+<meta name="twitter:image" content="https://xyb3rpunq.github.io/whoami/assets/og-cover.png">
+<meta name="twitter:image:alt" content="Daniel Hutajulu — @xyb3rpunk">
 
 <link rel="preload" as="image" href="assets/avatar.webp" type="image/webp">
 <link rel="stylesheet" href="assets/css/style.css">
@@ -454,7 +472,7 @@
         </p>
       </article>
 
-      <a class="proj reveal" href="https://github.com/xyb3rpunq/N304J" target="_blank" rel="noopener noreferrer">
+      <a class="proj reveal" data-repo="N304J" href="https://github.com/xyb3rpunq/N304J" target="_blank" rel="noopener noreferrer">
         <header class="proj-head">
           <span class="proj-badge b-ai">AI · GraphRAG</span>
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
@@ -470,7 +488,7 @@
         <p class="proj-stats"><b>263</b> <span data-i18n data-id="test lulus" data-en="tests passing">test lulus</span></p>
       </a>
 
-      <a class="proj reveal" href="https://github.com/xyb3rpunq/claudeck" target="_blank" rel="noopener noreferrer">
+      <a class="proj reveal" data-repo="claudeck" href="https://github.com/xyb3rpunq/claudeck" target="_blank" rel="noopener noreferrer">
         <header class="proj-head">
           <span class="proj-badge b-saas">SaaS · AI</span>
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
@@ -485,7 +503,7 @@
         <ul class="tags"><li>Next.js 14</li><li>TypeScript</li><li>Prisma</li><li>Midtrans</li></ul>
       </a>
 
-      <a class="proj reveal" href="https://xyb3rpunq.github.io/tank-a-rank/" target="_blank" rel="noopener noreferrer">
+      <a class="proj reveal" data-repo="tank-a-rank" href="https://xyb3rpunq.github.io/tank-a-rank/" target="_blank" rel="noopener noreferrer">
         <header class="proj-head">
           <span class="proj-badge b-live"><i class="dot" aria-hidden="true"></i>Live</span>
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
@@ -500,7 +518,7 @@
         <ul class="tags"><li>TypeScript</li><li>Static Export</li><li>Civic Data</li></ul>
       </a>
 
-      <a class="proj reveal" href="https://github.com/xyb3rpunq/n8n" target="_blank" rel="noopener noreferrer">
+      <a class="proj reveal" data-repo="n8n" href="https://github.com/xyb3rpunq/n8n" target="_blank" rel="noopener noreferrer">
         <header class="proj-head">
           <span class="proj-badge b-infra" data-i18n data-id="Infra · Otomasi" data-en="Infra · Automation">Infra · Otomasi</span>
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
@@ -516,7 +534,7 @@
         <p class="proj-stats"><b>112</b> <span data-i18n data-id="test · 100% statement coverage" data-en="tests · 100% statement coverage">test · 100% statement coverage</span></p>
       </a>
 
-      <a class="proj reveal" href="https://github.com/xyb3rpunq/sqa-cypress-dws" target="_blank" rel="noopener noreferrer">
+      <a class="proj reveal" data-repo="sqa-cypress-dws" href="https://github.com/xyb3rpunq/sqa-cypress-dws" target="_blank" rel="noopener noreferrer">
         <header class="proj-head">
           <span class="proj-badge b-qa">QA · Automation</span>
           <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg>
@@ -785,6 +803,33 @@
     </p>
   </div>
 </footer>
+
+<!-- ══════════ COMMAND PALETTE ══════════ -->
+<div class="cmdk" id="cmdk" hidden>
+  <div class="cmdk-scrim" id="cmdkScrim"></div>
+  <div class="cmdk-box" role="dialog" aria-modal="true" aria-labelledby="cmdkLabel">
+    <h2 class="sr-only" id="cmdkLabel" data-i18n data-id="Panel perintah" data-en="Command palette">Panel perintah</h2>
+    <div class="cmdk-field">
+      <span class="cmdk-sym" aria-hidden="true">&gt;</span>
+      <input type="text" id="cmdkInput" autocomplete="off" autocapitalize="off" spellcheck="false"
+             role="combobox" aria-expanded="true" aria-controls="cmdkList" aria-autocomplete="list"
+             placeholder="Ketik buat nyari…">
+      <kbd class="cmdk-esc">esc</kbd>
+    </div>
+    <ul class="cmdk-list" id="cmdkList" role="listbox" aria-label="Perintah"></ul>
+    <p class="cmdk-empty" id="cmdkEmpty" hidden data-i18n data-id="Nggak ada yang cocok." data-en="Nothing matches.">Nggak ada yang cocok.</p>
+    <footer class="cmdk-foot">
+      <span><kbd>↑</kbd><kbd>↓</kbd> <em data-i18n data-id="pilih" data-en="navigate">pilih</em></span>
+      <span><kbd>↵</kbd> <em data-i18n data-id="jalankan" data-en="run">jalankan</em></span>
+      <span><kbd>esc</kbd> <em data-i18n data-id="tutup" data-en="close">tutup</em></span>
+    </footer>
+  </div>
+</div>
+
+<button class="cmdk-open" id="cmdkOpen" type="button" aria-label="Buka panel perintah">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17l6-5-6-5M12 19h8"/></svg>
+  <kbd>Ctrl</kbd><kbd>K</kbd>
+</button>
 
 <button class="to-top" id="toTop" type="button" aria-label="Kembali ke atas">
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>

@@ -1,0 +1,83 @@
+name: Refresh project stats
+
+# Kartu proyek di situs menampilkan bahasa, tanggal commit terakhir, dan jumlah
+# bintang. Workflow ini menariknya langsung dari GitHub API tiap hari supaya
+# angkanya nggak pernah basi — nggak perlu diedit manual.
+
+on:
+  schedule:
+    - cron: '17 21 * * *'   # 04:17 WIB setiap hari
+  workflow_dispatch:         # bisa dijalankan manual dari tab Actions
+  push:
+    branches: [main]
+    paths: ['.github/workflows/refresh-projects.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-projects
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch repo stats
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p assets/data
+
+          # hanya repo publik — token bawaan runner tidak bisa membaca repo privat lain
+          REPOS="N304J claudeck tank-a-rank n8n sqa-cypress-dws"
+
+          echo '{' > /tmp/out.json
+          echo "  \"generated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"," >> /tmp/out.json
+          echo '  "repos": {' >> /tmp/out.json
+
+          first=1
+          for r in $REPOS; do
+            if ! data=$(gh api "repos/xyb3rpunq/$r" 2>/dev/null); then
+              echo "::warning::lewati $r (tidak terbaca)"
+              continue
+            fi
+            stars=$(echo "$data" | jq -r '.stargazers_count')
+            lang=$(echo "$data"  | jq -r '.language // ""')
+            push=$(echo "$data"  | jq -r '.pushed_at')
+            [ $first -eq 1 ] || echo ',' >> /tmp/out.json
+            first=0
+            printf '    "%s": { "stars": %s, "language": "%s", "pushedAt": "%s" }' \
+              "$r" "$stars" "$lang" "$push" >> /tmp/out.json
+          done
+
+          echo '' >> /tmp/out.json
+          echo '  }' >> /tmp/out.json
+          echo '}' >> /tmp/out.json
+
+          jq . /tmp/out.json > assets/data/projects.json
+          cat assets/data/projects.json
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          # abaikan perubahan yang cuma stempel waktu
+          if git diff --quiet -- assets/data/projects.json; then
+            echo "tidak ada perubahan"
+            exit 0
+          fi
+          if [ "$(git diff --numstat -- assets/data/projects.json | awk '{print $1+$2}')" = "2" ] \
+             && git diff -U0 -- assets/data/projects.json | grep -qE '^[+-].*"generated"' \
+             && [ "$(git diff -U0 -- assets/data/projects.json | grep -cE '^[+-][^+-]')" = "2" ]; then
+            echo "hanya stempel waktu yang berubah — lewati commit"
+            git checkout -- assets/data/projects.json
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/data/projects.json
+          git commit -m "chore: refresh statistik proyek [skip ci]"
+          git push

@@ -47,6 +47,8 @@
       menuClose: 'Tutup menu',
       toTop: 'Kembali ke atas',
       easter: 'Ini hal paling bodoh yang pernah gue bilang.',
+      cmdkPlaceholder: 'Ketik buat nyari…',
+      cmdkOpen: 'Buka panel perintah',
       podPrompt: 'podcast --status',
       podSoon: 'Episode pertama lagi digarap',
       podBody: 'Belum ada yang tayang. Gue nggak mau rilis cuma buat rilis — pengennya episode pertama itu yang emang layak didengerin sampai habis.',
@@ -59,6 +61,8 @@
       menuClose: 'Close menu',
       toTop: 'Back to top',
       easter: "It's the stupidest thing I've ever said.",
+      cmdkPlaceholder: 'Type to search…',
+      cmdkOpen: 'Open command palette',
       podPrompt: 'podcast --status',
       podSoon: 'Episode one is in the works',
       podBody: "Nothing is out yet. I don't want to ship just to ship — I'd rather the first episode be one worth listening to all the way through.",
@@ -110,6 +114,11 @@
     var easter = $('.footer-easter');
     if (easter) easter.setAttribute('title', t('easter'));
 
+    var cmdkInput = $('#cmdkInput');
+    if (cmdkInput) cmdkInput.setAttribute('placeholder', t('cmdkPlaceholder'));
+    var cmdkOpen = $('#cmdkOpen');
+    if (cmdkOpen) cmdkOpen.setAttribute('aria-label', t('cmdkOpen'));
+
     /* the rail is dots only — borrow each section's name from the navbar
        so screen readers get a real label in the active language */
     $$('.rail a[href^="#"]').forEach(function (a) {
@@ -122,6 +131,7 @@
     });
 
     renderPodcast();
+    renderProjectStats();
   }
 
   applyLang();
@@ -273,6 +283,58 @@
     host.appendChild(list);
     play(0);
   }
+
+  /* ── live project stats ────────────────────────────────────
+     Diisi .github/workflows/refresh-projects.yml tiap hari. Kalau
+     berkasnya belum ada atau gagal diambil, kartu tetap tampil apa
+     adanya — tidak ada yang rusak. */
+  var projectStats = null;
+
+  function relTime(iso) {
+    var then = new Date(iso).getTime();
+    if (!then) return '';
+    var days = Math.floor((Date.now() - then) / 86400000);
+    var id = lang === 'id';
+    if (days <= 0) return id ? 'hari ini' : 'today';
+    if (days === 1) return id ? 'kemarin' : 'yesterday';
+    if (days < 30) return id ? days + ' hari lalu' : days + ' days ago';
+    var months = Math.floor(days / 30);
+    if (months < 12) return id ? months + ' bulan lalu' : months + (months === 1 ? ' month ago' : ' months ago');
+    var years = Math.floor(months / 12);
+    return id ? years + ' tahun lalu' : years + (years === 1 ? ' year ago' : ' years ago');
+  }
+
+  function renderProjectStats() {
+    if (!projectStats || !projectStats.repos) return;
+    $$('.proj[data-repo]').forEach(function (card) {
+      var info = projectStats.repos[card.getAttribute('data-repo')];
+      if (!info || !info.pushedAt) return;
+
+      var line = card.querySelector('.proj-live');
+      if (!line) {
+        line = document.createElement('p');
+        line.className = 'proj-live';
+        var tags = card.querySelector('.tags');
+        if (tags && tags.parentNode) tags.parentNode.insertBefore(line, tags.nextSibling);
+        else card.appendChild(line);
+      }
+      while (line.firstChild) line.removeChild(line.firstChild);
+
+      var dot = document.createElement('i');
+      dot.setAttribute('aria-hidden', 'true');
+      line.appendChild(dot);
+
+      var txt = (lang === 'id' ? 'diperbarui ' : 'updated ') + relTime(info.pushedAt);
+      /* nol bintang lebih baik tidak ditampilkan sama sekali */
+      if (info.stars > 0) txt += ' · ★ ' + info.stars;
+      line.appendChild(document.createTextNode(txt));
+    });
+  }
+
+  fetch('assets/data/projects.json', { cache: 'no-cache' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (data) { projectStats = data; renderProjectStats(); })
+    .catch(function () { /* offline atau berkas belum ada — abaikan */ });
 
   /* ── hero terminal line ────────────────────────────────── */
   (function () {
@@ -513,6 +575,249 @@
       }, { passive: true });
     }
   }
+
+  /* ── command palette (Ctrl/⌘+K) ────────────────────────── */
+  (function () {
+    var root = $('#cmdk'), input = $('#cmdkInput'), list = $('#cmdkList'),
+        empty = $('#cmdkEmpty'), opener = $('#cmdkOpen'), scrim = $('#cmdkScrim');
+    if (!root || !input || !list) return;
+
+    var ICON = {
+      jump: '<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+      out: '<svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>',
+      down: '<svg viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 19.5h16"/></svg>',
+      copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5.5 15H4.6A1.6 1.6 0 0 1 3 13.4V4.6A1.6 1.6 0 0 1 4.6 3h8.8A1.6 1.6 0 0 1 15 4.6v.9"/></svg>',
+      lang: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15 0 18M12 3c-2.5 2.7-2.5 15 0 18"/></svg>',
+      up: '<svg viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg>'
+    };
+
+    /* labels come straight from the page so they always match the
+       active language without a second translation table */
+    function textOf(sel, fallback) {
+      var el = $(sel);
+      return el ? el.textContent.trim() : fallback;
+    }
+
+    function commands() {
+      var goLabel = lang === 'id' ? 'Buka' : 'Go to';
+      var out = [];
+
+      $$('#navLinks a[href^="#"]').forEach(function (a) {
+        out.push({
+          group: lang === 'id' ? 'Bagian' : 'Sections',
+          label: goLabel + ' ' + a.textContent.trim(),
+          hint: a.getAttribute('href'),
+          icon: ICON.jump,
+          run: function () { jumpTo(a.getAttribute('href')); }
+        });
+      });
+
+      [['Instagram', 'https://www.instagram.com/danielxyz_/', '@danielxyz_'],
+       ['X', 'https://x.com/xyb3rpunk', '@xyb3rpunk'],
+       ['LinkedIn', 'https://www.linkedin.com/in/daniel-hutajulu23/', 'daniel-hutajulu23'],
+       ['GitHub', 'https://github.com/xyb3rpunq', 'xyb3rpunq']
+      ].forEach(function (s) {
+        out.push({
+          group: lang === 'id' ? 'Sosial' : 'Social',
+          label: (lang === 'id' ? 'Buka ' : 'Open ') + s[0],
+          hint: s[2],
+          icon: ICON.out,
+          run: function () { window.open(s[1], '_blank', 'noopener,noreferrer'); }
+        });
+      });
+
+      out.push({
+        group: lang === 'id' ? 'Aksi' : 'Actions',
+        label: lang === 'id' ? 'Unduh CV' : 'Download CV',
+        hint: 'PDF',
+        icon: ICON.down,
+        run: function () {
+          var a = document.createElement('a');
+          a.href = 'assets/cv/Daniel-Hutajulu-CV.pdf';
+          a.download = 'Daniel-Hutajulu-CV.pdf';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      });
+
+      [['addr-btc', 'BTC'], ['addr-trc', 'USDT TRC20'], ['addr-erc', 'USDT ERC20']].forEach(function (a) {
+        out.push({
+          group: lang === 'id' ? 'Aksi' : 'Actions',
+          label: (lang === 'id' ? 'Salin alamat ' : 'Copy ') + a[1] + (lang === 'id' ? '' : ' address'),
+          hint: lang === 'id' ? 'clipboard' : 'clipboard',
+          icon: ICON.copy,
+          run: function () {
+            var btn = $('.copy[data-copy="' + a[0] + '"]');
+            jumpTo('#support');
+            if (btn) btn.click();
+          }
+        });
+      });
+
+      out.push({
+        group: lang === 'id' ? 'Aksi' : 'Actions',
+        label: lang === 'id' ? 'Ganti bahasa ke English' : 'Switch language to Indonesia',
+        hint: lang === 'id' ? 'EN' : 'ID',
+        icon: ICON.lang,
+        run: function () { if (langSwitch) langSwitch.click(); }
+      });
+
+      out.push({
+        group: lang === 'id' ? 'Aksi' : 'Actions',
+        label: lang === 'id' ? 'Kembali ke atas' : 'Back to top',
+        hint: 'home',
+        icon: ICON.up,
+        run: function () { window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' }); }
+      });
+
+      return out;
+    }
+
+    function jumpTo(hash) {
+      var target = document.querySelector(hash);
+      if (target) target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    }
+
+    var all = [], shown = [], cursor = 0, lastFocus = null;
+
+    function score(cmd, q) {
+      var hay = (cmd.label + ' ' + cmd.hint + ' ' + cmd.group).toLowerCase();
+      if (!q) return 1;
+      if (hay.indexOf(q) === 0) return 3;
+      if (hay.indexOf(q) > -1) return 2;
+      /* loose subsequence match so "prj" still finds "Buka Proyek" */
+      var i = 0;
+      for (var c = 0; c < hay.length && i < q.length; c++) if (hay[c] === q[i]) i++;
+      return i === q.length ? 1 : 0;
+    }
+
+    function render() {
+      var q = input.value.trim().toLowerCase();
+      shown = all
+        .map(function (c) { return { c: c, s: score(c, q) }; })
+        .filter(function (x) { return x.s > 0; })
+        .sort(function (a, b) { return b.s - a.s; })
+        .map(function (x) { return x.c; });
+
+      while (list.firstChild) list.removeChild(list.firstChild);
+      cursor = 0;
+
+      var group = '';
+      shown.forEach(function (cmd, i) {
+        if (cmd.group !== group && !q) {
+          group = cmd.group;
+          var head = document.createElement('li');
+          head.className = 'cmdk-group';
+          head.setAttribute('role', 'presentation');
+          head.textContent = group;
+          list.appendChild(head);
+        }
+        var li = document.createElement('li');
+        li.setAttribute('role', 'presentation');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cmdk-item';
+        btn.setAttribute('role', 'option');
+        btn.id = 'cmdk-opt-' + i;
+        btn.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+
+        var ico = document.createElement('span');
+        ico.className = 'cmdk-ico';
+        ico.setAttribute('aria-hidden', 'true');
+        ico.innerHTML = cmd.icon;
+
+        var txt = document.createElement('span');
+        txt.className = 'cmdk-txt';
+        txt.textContent = cmd.label;
+
+        var hint = document.createElement('span');
+        hint.className = 'cmdk-hint';
+        hint.textContent = cmd.hint;
+
+        btn.appendChild(ico);
+        btn.appendChild(txt);
+        btn.appendChild(hint);
+        btn.addEventListener('click', function () { close(); cmd.run(); });
+        btn.addEventListener('mousemove', function () { move(i - cursor); });
+        li.appendChild(btn);
+        list.appendChild(li);
+      });
+
+      empty.hidden = shown.length > 0;
+      sync();
+    }
+
+    function items() { return $$('.cmdk-item', list); }
+
+    function sync() {
+      var els = items();
+      els.forEach(function (el, i) { el.setAttribute('aria-selected', i === cursor ? 'true' : 'false'); });
+      if (els[cursor]) {
+        input.setAttribute('aria-activedescendant', els[cursor].id);
+        els[cursor].scrollIntoView({ block: 'nearest' });
+      } else {
+        input.removeAttribute('aria-activedescendant');
+      }
+    }
+
+    function move(delta) {
+      var n = items().length;
+      if (!n) return;
+      cursor = (cursor + delta + n) % n;
+      sync();
+    }
+
+    function open() {
+      if (!root.hidden) return;
+      lastFocus = document.activeElement;
+      all = commands();
+      input.value = '';
+      root.hidden = false;
+      document.body.style.overflow = 'hidden';
+      render();
+      input.focus();
+    }
+
+    function close() {
+      if (root.hidden) return;
+      root.hidden = true;
+      /* the mobile drawer locks scroll too — don't unlock it out from under it */
+      var drawer = $('#navLinks');
+      if (!drawer || !drawer.classList.contains('is-open')) document.body.style.overflow = '';
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    input.addEventListener('input', render);
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); cursor = 0; sync(); }
+      else if (e.key === 'End') { e.preventDefault(); cursor = Math.max(0, items().length - 1); sync(); }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        var cmd = shown[cursor];
+        if (cmd) { close(); cmd.run(); }
+      } else if (e.key === 'Escape') { e.preventDefault(); close(); }
+      else if (e.key === 'Tab') { e.preventDefault(); move(e.shiftKey ? -1 : 1); }
+    });
+
+    if (scrim) scrim.addEventListener('click', close);
+    if (opener) opener.addEventListener('click', open);
+
+    document.addEventListener('keydown', function (e) {
+      var typing = /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || '')) ||
+                   e.target.isContentEditable;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        root.hidden ? open() : close();
+      } else if (e.key === '/' && !typing && root.hidden) {
+        e.preventDefault();
+        open();
+      }
+    });
+  })();
 
   /* ── footer year ───────────────────────────────────────── */
   var year = $('#year');
