@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://xyb3rpunq.github.io/siapakamu/sitemap.xml
+Sitemap: https://xyb3rpunq.github.io/whoami/sitemap.xml

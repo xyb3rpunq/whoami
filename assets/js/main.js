@@ -16,6 +16,18 @@
     'addr-erc': '0x0000000000000000000000000000000000000000'
   };
 
+  /* ─────────────────────────────────────────────────────────
+     PODCAST EPISODES — kosongin buat state "segera hadir".
+     Isi satu objek aja, pemutarnya langsung nyala:
+
+       { title: 'Ep 01 — Gagal 7 kali',
+         url:   'https://open.spotify.com/episode/XXXXXXXX' }
+
+     Didukung: Spotify (episode/show), YouTube (watch/youtu.be),
+     dan file audio langsung (.mp3/.m4a/.ogg/.wav).
+     ───────────────────────────────────────────────────────── */
+  var EPISODES = [];
+
   var $ = function (s, c) { return (c || document).querySelector(s); };
   var $$ = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,7 +46,11 @@
       menuOpen: 'Buka menu',
       menuClose: 'Tutup menu',
       toTop: 'Kembali ke atas',
-      easter: 'Ini hal paling bodoh yang pernah gue bilang.'
+      easter: 'Ini hal paling bodoh yang pernah gue bilang.',
+      podPrompt: 'podcast --status',
+      podSoon: 'Episode pertama lagi digarap',
+      podBody: 'Belum ada yang tayang. Gue nggak mau rilis cuma buat rilis — pengennya episode pertama itu yang emang layak didengerin sampai habis.',
+      podNow: 'Sedang diputar'
     },
     en: {
       copied: 'Address copied to clipboard',
@@ -42,7 +58,11 @@
       menuOpen: 'Open menu',
       menuClose: 'Close menu',
       toTop: 'Back to top',
-      easter: "It's the stupidest thing I've ever said."
+      easter: "It's the stupidest thing I've ever said.",
+      podPrompt: 'podcast --status',
+      podSoon: 'Episode one is in the works',
+      podBody: "Nothing is out yet. I don't want to ship just to ship — I'd rather the first episode be one worth listening to all the way through.",
+      podNow: 'Now playing'
     }
   };
 
@@ -89,6 +109,19 @@
 
     var easter = $('.footer-easter');
     if (easter) easter.setAttribute('title', t('easter'));
+
+    /* the rail is dots only — borrow each section's name from the navbar
+       so screen readers get a real label in the active language */
+    $$('.rail a[href^="#"]').forEach(function (a) {
+      var href = a.getAttribute('href');
+      var twin = $('#navLinks a[href="' + href + '"]');
+      var label = twin ? twin.textContent.trim()
+                       : (lang === 'id' ? 'Beranda' : 'Home');
+      a.setAttribute('aria-label', label);
+      a.setAttribute('title', label);
+    });
+
+    renderPodcast();
   }
 
   applyLang();
@@ -113,6 +146,155 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove('is-on'); }, 2600);
   }
+
+  /* ── podcast player ────────────────────────────────────── */
+  function embedFor(url) {
+    var m;
+    if ((m = url.match(/open\.spotify\.com\/(?:embed\/)?(episode|show|track|playlist)\/([A-Za-z0-9]+)/))) {
+      return { type: 'iframe', src: 'https://open.spotify.com/embed/' + m[1] + '/' + m[2] + '?theme=0', height: 232 };
+    }
+    if ((m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/))) {
+      return { type: 'iframe', src: 'https://www.youtube-nocookie.com/embed/' + m[1], height: 315 };
+    }
+    if (/\.(mp3|m4a|ogg|wav|aac)(\?|$)/i.test(url)) return { type: 'audio', src: url };
+    return { type: 'link', src: url };
+  }
+
+  function renderPodcast() {
+    var host = $('#podPlayer');
+    if (!host) return;
+
+    while (host.firstChild) host.removeChild(host.firstChild);
+
+    /* ── nothing published yet: designed empty state ── */
+    if (!EPISODES.length) {
+      host.setAttribute('data-empty', 'true');
+
+      var box = document.createElement('div');
+      box.className = 'pod-console';
+
+      var l1 = document.createElement('p');
+      l1.className = 'l1';
+      l1.appendChild(document.createTextNode('~ $ '));
+      var b = document.createElement('b');
+      b.textContent = t('podPrompt');
+      l1.appendChild(b);
+
+      var l2 = document.createElement('p');
+      l2.className = 'l2';
+      l2.textContent = t('podSoon');
+
+      var l3 = document.createElement('p');
+      l3.className = 'l3';
+      l3.textContent = t('podBody');
+
+      var wave = document.createElement('div');
+      wave.className = 'pod-wave';
+      wave.setAttribute('aria-hidden', 'true');
+      for (var i = 0; i < 26; i++) {
+        var bar = document.createElement('i');
+        bar.style.animationDelay = (i * 0.07).toFixed(2) + 's';
+        bar.style.animationDuration = (0.9 + (i % 5) * 0.22).toFixed(2) + 's';
+        wave.appendChild(bar);
+      }
+
+      box.appendChild(l1);
+      box.appendChild(l2);
+      box.appendChild(l3);
+      box.appendChild(wave);
+      host.appendChild(box);
+      return;
+    }
+
+    /* ── episodes configured: real player ── */
+    host.removeAttribute('data-empty');
+    var stage = document.createElement('div');
+    stage.className = 'pod-stage';
+    host.appendChild(stage);
+
+    var list = document.createElement('ul');
+    list.className = 'pod-list';
+    var buttons = [];
+
+    function play(index) {
+      var ep = EPISODES[index];
+      var e = embedFor(ep.url);
+      while (stage.firstChild) stage.removeChild(stage.firstChild);
+
+      if (e.type === 'iframe') {
+        var f = document.createElement('iframe');
+        f.className = 'pod-embed';
+        f.src = e.src;
+        f.height = e.height;
+        f.title = ep.title;
+        f.loading = 'lazy';
+        f.allow = 'autoplay; clipboard-write; encrypted-media; picture-in-picture';
+        f.setAttribute('allowfullscreen', '');
+        f.referrerPolicy = 'no-referrer-when-downgrade';
+        stage.appendChild(f);
+      } else if (e.type === 'audio') {
+        var a = document.createElement('audio');
+        a.className = 'pod-embed';
+        a.controls = true;
+        a.preload = 'none';
+        a.src = e.src;
+        stage.appendChild(a);
+      } else {
+        var link = document.createElement('a');
+        link.className = 'btn btn-primary';
+        link.href = e.src;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = ep.title;
+        stage.appendChild(link);
+      }
+
+      buttons.forEach(function (btn, i) {
+        btn.classList.toggle('is-playing', i === index);
+        btn.setAttribute('aria-current', i === index ? 'true' : 'false');
+      });
+    }
+
+    EPISODES.forEach(function (ep, i) {
+      var li = document.createElement('li');
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pod-ep';
+      var num = document.createElement('b');
+      num.textContent = String(i + 1).padStart(2, '0');
+      btn.appendChild(num);
+      btn.appendChild(document.createTextNode(ep.title));
+      btn.addEventListener('click', function () { play(i); });
+      buttons.push(btn);
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+
+    host.appendChild(list);
+    play(0);
+  }
+
+  /* ── hero terminal line ────────────────────────────────── */
+  (function () {
+    var el = $('#termCmd');
+    if (!el) return;
+    var cmds = ['whoami', 'cat manifesto.md', 'ls ~/focus', 'git log --oneline'];
+
+    if (reduced) { el.textContent = cmds[0]; return; }
+
+    var ci = 0, pos = 0, deleting = false;
+    (function tick() {
+      var word = cmds[ci];
+      pos += deleting ? -1 : 1;
+      el.textContent = word.slice(0, pos);
+
+      var wait = deleting ? 34 : 66;
+      if (!deleting && pos === word.length) { deleting = true; wait = 1900; }
+      else if (deleting && pos === 0) { deleting = false; ci = (ci + 1) % cmds.length; wait = 420; }
+
+      setTimeout(tick, wait);
+    })();
+  })();
 
   /* ── nav: stuck state, burger, scrim ───────────────────── */
   var nav = $('#nav');
@@ -209,8 +391,9 @@
   /* ── active section in nav ─────────────────────────────── */
   var sections = $$('main section[id]');
   var linkFor = {};
-  $$('#navLinks a[href^="#"]').forEach(function (a) {
-    linkFor[a.getAttribute('href').slice(1)] = a;
+  $$('#navLinks a[href^="#"], .rail a[href^="#"]').forEach(function (a) {
+    var id = a.getAttribute('href').slice(1);
+    (linkFor[id] = linkFor[id] || []).push(a);
   });
 
   if ('IntersectionObserver' in window && sections.length) {
@@ -222,7 +405,7 @@
         if (id === current) return;
         current = id;
         Object.keys(linkFor).forEach(function (key) {
-          linkFor[key].classList.toggle('is-active', key === id);
+          linkFor[key].forEach(function (a) { a.classList.toggle('is-active', key === id); });
         });
       });
     }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
@@ -310,7 +493,7 @@
 
   /* ── card spotlight ────────────────────────────────────── */
   if (!reduced && window.matchMedia('(hover:hover)').matches) {
-    $$('.card').forEach(function (card) {
+    $$('.card, .proj').forEach(function (card) {
       card.addEventListener('pointermove', function (e) {
         var r = card.getBoundingClientRect();
         card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
