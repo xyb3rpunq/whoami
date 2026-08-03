@@ -21,10 +21,14 @@ Personal branding site. Statis, tanpa framework, tanpa build step, tanpa tracker
 | `assets/avatar.webp` | Foto profil dipakai halaman (27 KB) |
 | `assets/avatar.png` | Versi PNG kualitas penuh untuk JSON-LD dan crawler |
 | `assets/cv/*.pdf` | CV yang bisa diunduh pengunjung |
-| `assets/favicon*` | Ikon tab browser & home screen |
+| `assets/favicon*`, `assets/icon-*` | Ikon tab browser, home screen, dan PWA |
+| `assets/og-cover.png` | Kartu share 1200×630 buat X / WhatsApp / LinkedIn |
+| `assets/data/projects.json` | Statistik repo — **dibuat otomatis, jangan diedit manual** |
+| `manifest.webmanifest` | Bikin situs bisa di-install di HP |
 | `404.html` | Halaman error — CSS dan foto di-inline, jadi tetap rapi di path sedalam apa pun |
 | `robots.txt`, `sitemap.xml` | SEO dasar |
 | `.nojekyll` | Matikan pemrosesan Jekyll di GitHub Pages |
+| `.github/workflows/` | Workflow yang nge-refresh statistik proyek tiap hari |
 
 ## Fitur
 
@@ -36,8 +40,23 @@ Personal branding site. Statis, tanpa framework, tanpa build step, tanpa tracker
 - **Tab donasi** BTC / USDT-TRC20 / USDT-ERC20 dengan navigasi keyboard (panah, Home, End).
 - **Copy address** ke clipboard, dengan fallback `execCommand`, lalu fallback seleksi teks + toast.
 - **Unduh CV** langsung dari hero dan dari section karier.
+- **Command palette** — `Ctrl`/`⌘`+`K` atau `/`. Delapan belas perintah, pencarian fuzzy, navigasi panah penuh.
+- **Statistik proyek otomatis** — kartu proyek nunjukin "diperbarui X lalu", di-refresh workflow harian.
+- **Bisa di-install di HP** — PWA manifest, ikon maskable, shortcut ke Proyek dan CV.
 - **Aksesibilitas** — satu `h1`, skip link, semua link & tombol punya nama, fokus terlihat.
 - **Ringan** — nol dependensi eksternal, nol web font, animasi mati otomatis kalau `prefers-reduced-motion`.
+- **CSP ketat** — `default-src 'none'`, skrip inline dikunci hash SHA-256.
+
+## Kalau ngedit skrip inline di `index.html`
+
+Ada satu baris `<script>` inline (penanda kelas `.js`) yang di-whitelist CSP lewat hash.
+Kalau baris itu diubah, hitung ulang hash-nya dan update `<meta http-equiv="Content-Security-Policy">`:
+
+```bash
+python -c "import hashlib,base64;print('sha256-'+base64.b64encode(hashlib.sha256(\"document.documentElement.classList.add('js');\".encode()).digest()).decode())"
+```
+
+Kalau lupa, halaman **tetap tampil lengkap** — cuma animasi reveal-nya yang mati.
 
 ## Ganti alamat donasi
 
